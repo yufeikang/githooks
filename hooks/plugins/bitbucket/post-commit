@@ -1,0 +1,161 @@
+# !/bin/env bash
+
+DEBUG_ECHO "[BITBUCKET] Start"
+
+render_info() {
+    echo "==================================================="
+    echo "$1"
+    echo "==================================================="
+}
+
+render_sucessed() {
+    echo "==================================================="
+    echo "${Blue}$1${Color_Off}"
+    echo "==================================================="
+}
+
+render_failed() {
+    echo "==================================================="
+    echo "${Red}$1${Color_Off}"
+    echo "==================================================="
+}
+
+if [ -z "$(git remote -v | grep origin)" ]; then
+    DEBUG_ECHO "[BITBUCKET] not found origin remote repository"
+    exit 0
+fi
+
+# check curl,jq is installed
+if [ -z "$(which curl)" ]; then
+    render_failed "curl is not installed"
+    exit 1
+fi
+if [ -z "$(which jq)" ]; then
+    render_failed "jq is not installed"
+    exit 1
+fi
+
+DEST_BRANCH="$BITBUCKET_AUTO_MERGE_BRANCH"
+EXEC_FLAG="$BITBUCKET_AUTO_MERGE_EXEC_FLAG"
+
+if [ -z "$EXEC_FLAG" ]; then
+    DEBUG_ECHO "[BITBUCKET] not found BITBUCKET_AUTO_MERGE_EXEC_FLAG"
+    exit 0
+fi
+
+if [ -z "$DEST_BRANCH" ]; then
+    DEBUG_ECHO "[BITBUCKET] not found BITBUCKET_AUTO_MERGE_BRANCH"
+    exit 0
+fi
+
+# get last commit message
+commit_message=$(git log -1 --pretty=%B)
+
+# get current branch name
+current_branch=$(git branch --show-current)
+
+# check current branch name is $DEST_BRANCH
+if [ $current_branch = "$DEST_BRANCH" ]; then
+    DEBUG_ECHO "[BITBUCKET] current branch is $DEST_BRANCH, skip"
+    exit 0
+fi
+
+# get repository name
+repo_name=$(basename -s .git $(git config --get remote.origin.url))
+
+DEBUG_ECHO "[BITBUCKET] repo_name: $repo_name"
+
+check_bitbucket_vars() {
+    # check has $DEST_BRANCH branch, if not exist, exit
+    if [ -z "$(git branch -a | grep $DEST_BRANCH)" ]; then
+        render_info "$DEST_BRANCH branch is not exist"
+        exit 1
+    fi
+    # check environment variable BITBUCKET_USER
+    if [ -z "$BITBUCKET_USER" ]; then
+        render_info "BITBUCKET_USER is not set"
+        exit 1
+    fi
+    # check environment variable BITBUCKET_PASSWORD
+    if [ -z "$BITBUCKET_PASSWORD" ]; then
+        render_info "BITBUCKET_PASSWORD is not set"
+        exit 1
+    fi
+    # check environment variable BITBUCKET_WORKSPACE
+    if [ -z "$BITBUCKET_WORKSPACE" ]; then
+        render_info "BITBUCKET_WORKSPACE is not set"
+        exit 1
+    fi
+}
+
+bitbuckert_merge_branch() {
+    # create pull request to $DEST_BRANCH branch
+    # get curl response
+    response=$(curl -X POST \
+        -u $BITBUCKET_USER:$BITBUCKET_PASSWORD \
+        https://api.bitbucket.org/2.0/repositories/$BITBUCKET_WORKSPACE/$repo_name/pullrequests \
+        -d '{"close_source_branch": false, "title": "Merge from '$current_branch' to $DEST_BRANCH", "description": "Merge from '$current_branch' to $DEST_BRANCH", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "'$DEST_BRANCH'"}}}' \
+        -H "Content-Type: application/json" 2>/dev/null)
+
+    # check has error
+    error=$(echo $response | jq -r '.error')
+    if [ ! -z "$error" ]; then
+        render_failed "create pull request failed: $error"
+        exit 1
+    fi
+    # get pull request id
+    pull_request_id=$(echo $response | jq -r '.id')
+    # get pull request url
+    pull_request_url=$(echo $response | jq -r '.links.html.href')
+    # get pull request title
+    pull_request_title=$(echo $response | jq -r '.title')
+
+    DEBUG_ECHO "[BITBUCKET] pull_request_id: $pull_request_id [$pull_request_url]"
+
+    # merge pull request
+    merge_response=$(curl -X POST \
+        -u $BITBUCKET_USER:$BITBUCKET_PASSWORD \
+        https://api.bitbucket.org/2.0/repositories/$BITBUCKET_WORKSPACE/$repo_name/pullrequests/$pull_request_id/merge \
+        -d '{"close_source_branch": false, "message": "Merge from '$current_branch' to $DEST_BRANCH", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "$DEST_BRANCH"}}}' \
+        -H "Content-Type: application/json" 2>/dev/null)
+    # check merge result
+    merge_result=$(echo $merge_response | jq -r '.state')
+    DEBUG_ECHO "[BITBUCKET] merge_result: $merge_result"
+    if [ $merge_result = "MERGED" ]; then
+        render_sucessed "Merge Success\nPull Request: $pull_request_url\nTitle: $pull_request_title"
+        exit 0
+    else
+        render_failed "Merge Failed\nPull Request: $pull_request_url\nTitle: $pull_request_title"
+        exit 1
+    fi
+}
+
+# check if commit message contains "$EXEC_FLAG"
+if [[ $commit_message == *"$EXEC_FLAG"* ]]; then
+    check_bitbucket_vars
+
+    # echo message by banner
+    render_info "Deploy to $DEST_BRANCH"
+    # modify commit message, remove "$EXEC_FLAG"
+    sed_str="s/$EXEC_FLAG//g"
+    git commit --amend -m "$(echo $commit_message | sed "$sed_str")"
+    # push to origin
+    DEBUG_ECHO "[BITBUCKET] push $current_branch -> origin"
+    git push origin $current_branch
+
+    # get push result
+    push_result=$?
+    DEBUG_ECHO "[BITBUCKET] push_result: $push_result"
+
+    if [ $push_result -ne 0 ]; then
+        render_failed "Push Failed"
+        exit 1
+    fi
+
+    # get origin url
+    origin_url=$(git config --get remote.origin.url)
+
+    if [[ $origin_url == *"bitbucket"* ]]; then
+        bitbuckert_merge_branch
+    fi
+fi

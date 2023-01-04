@@ -1,0 +1,8 @@
+# !/bin/env bash
+
+hooks_dir=$(
+    cd $(dirname $0)
+    pwd
+)
+
+source $hooks_dir/exec_hooks.sh pre-commit
