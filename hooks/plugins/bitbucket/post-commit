@@ -94,11 +94,12 @@ bitbuckert_merge_branch() {
     response=$(curl -X POST \
         -u $BITBUCKET_USER:$BITBUCKET_PASSWORD \
         https://api.bitbucket.org/2.0/repositories/$BITBUCKET_WORKSPACE/$repo_name/pullrequests \
-        -d '{"close_source_branch": false, "title": "Merge from '$current_branch' to '$DEST_BRANCH'", "description": "Merge from '$current_branch' to $DEST_BRANCH", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "'$DEST_BRANCH'"}}}' \
+        -d '{"close_source_branch": false, "title": "Merge from '$current_branch' to '$DEST_BRANCH'", "description": "Merge from '$current_branch' to '$DEST_BRANCH'", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "'$DEST_BRANCH'"}}}' \
         -H "Content-Type: application/json" 2>/dev/null)
 
     # check has error
-    error=$(echo $response | jq -r '.error')
+    error=$(echo $response | jq -r '.error | select(. != null)')
+    # error is not empty and not "null"
     if [ ! -z "$error" ]; then
         render_failed "create pull request failed: $error"
         exit 1
@@ -116,7 +117,7 @@ bitbuckert_merge_branch() {
     merge_response=$(curl -X POST \
         -u $BITBUCKET_USER:$BITBUCKET_PASSWORD \
         https://api.bitbucket.org/2.0/repositories/$BITBUCKET_WORKSPACE/$repo_name/pullrequests/$pull_request_id/merge \
-        -d '{"close_source_branch": false, "message": "Merge from '$current_branch' to $DEST_BRANCH", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "$DEST_BRANCH"}}}' \
+        -d '{"close_source_branch": false, "message": "Merge from '$current_branch' to '$DEST_BRANCH'", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "'$DEST_BRANCH'"}}}' \
         -H "Content-Type: application/json" 2>/dev/null)
     # check merge result
     merge_result=$(echo $merge_response | jq -r '.state')
