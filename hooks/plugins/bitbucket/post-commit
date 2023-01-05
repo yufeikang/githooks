@@ -94,7 +94,7 @@ bitbuckert_merge_branch() {
     response=$(curl -X POST \
         -u $BITBUCKET_USER:$BITBUCKET_PASSWORD \
         https://api.bitbucket.org/2.0/repositories/$BITBUCKET_WORKSPACE/$repo_name/pullrequests \
-        -d '{"close_source_branch": false, "title": "Merge from '$current_branch' to $DEST_BRANCH", "description": "Merge from '$current_branch' to $DEST_BRANCH", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "'$DEST_BRANCH'"}}}' \
+        -d '{"close_source_branch": false, "title": "Merge from '$current_branch' to '$DEST_BRANCH'", "description": "Merge from '$current_branch' to $DEST_BRANCH", "source": {"branch": {"name": "'$current_branch'"}}, "destination": {"branch": {"name": "'$DEST_BRANCH'"}}}' \
         -H "Content-Type: application/json" 2>/dev/null)
 
     # check has error
