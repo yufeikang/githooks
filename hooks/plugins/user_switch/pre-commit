@@ -25,19 +25,24 @@ workspace=$(echo $url | cut -d':' -f 2 | cut -d'/' -f 1)
 git_user_name=$(eval echo "\$GIT_${workspace}_name")
 git_user_email=$(eval echo "\$GIT_${workspace}_email")
 
-## 4. check if config is exist, set it
-if [ -z "${!git_user_name}" ]; then
+if [ -z "$git_user_name" ]; then
+    DEBUG_ECHO "[UserSwitch] : Could not get GIT_${workspace}_name"
+    exit 0
+fi
 
-    # set git config user.name if not exist
-    _=$(git config --local --get user.name)
-    if [ $? -ne 0 ]; then
-        echo "[PRE-COMMIT] set git config user.name -> ${!git_user_name}"
-        git config user.name "${!git_user_name}"
-    fi
-    # set git config user.email if not exist
-    _=$(git config --local --get user.email)
-    if [ $? -ne 0 ]; then
-        echo "[PRE-COMMIT] set git config user.email -> ${!git_user_email}"
-        git config user.email "${!git_user_email}"
-    fi
+DEBUG_ECHO "[UserSwitch] git_user_name: $git_user_name"
+
+## 4. check if config is exist, set it
+
+# set git config user.name if not exist
+_=$(git config --local --get user.name)
+if [ $? -ne 0 ]; then
+    echo "[PRE-COMMIT] set git config user.name -> "$git_user_name""
+    git config user.name "$git_user_name"
+fi
+# set git config user.email if not exist
+_=$(git config --local --get user.email)
+if [ $? -ne 0 ]; then
+    echo "[PRE-COMMIT] set git config user.email -> ${!git_user_email}"
+    git config user.email "${!git_user_email}"
 fi

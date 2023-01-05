@@ -6,7 +6,6 @@ hooks_dir=$(
     pwd
 )
 
-some variables that you can use:
 # Reset
 Color_Off='\033[0m' # Text Reset
 
