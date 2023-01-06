@@ -14,7 +14,7 @@ echo "export GITHOOKS_PLUGINS=\"bitbucket user_switch\"" >> ~/.zshrc
 ```
 
 # Plugins
-* bitbucket: 
+* [bitbucket](./hooks/plugins/bitbucket/README.md): 
     * post_commit: auto merge branch to
-* user_switch
+* [user_switch](./hooks/plugins/user_switch/README.md)
     * pre_commit: auto switch user
