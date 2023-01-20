@@ -29,6 +29,24 @@ DEBUG_ECHO() {
 
 DEBUG_ECHO "Start [$HOOK_TYPE]"
 
+load_dot_env() {
+    env_file=$1
+    DEBUG_ECHO "try load $env_file"
+    if [ -f "$env_file" ]; then
+        DEBUG_ECHO "load $env_file"
+        export $(echo $(cat $env_file | sed 's/#.*//g' | xargs) | envsubst)
+    fi
+}
+
+# load .env file
+load_dot_env "$hooks_dir/../.env"
+
+# if exist GITHOOKS_ENV_FILE, load it
+if [ ! -z "$GITHOOKS_ENV_FILE" ]; then
+    DEBUG_ECHO "try load GITHOOKS_ENV_FILE: $GITHOOKS_ENV_FILE"
+    load_dot_env "$GITHOOKS_ENV_FILE"
+fi
+
 # if exist custom $HOOK_TYPE, run it
 if [ -f "$hooks_dir/custom/$HOOK_TYPE" ]; then
     DEBUG_ECHO "custom [$HOOK_TYPE] : $hooks_dir/custom/$HOOK_TYPE"
