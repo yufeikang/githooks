@@ -54,6 +54,11 @@ commit_message=$(git log -1 --pretty=%B)
 # get current branch name
 current_branch=$(git branch --show-current)
 
+if [ -z "$current_branch" ]; then
+    DEBUG_ECHO "[BITBUCKET] not found current branch, maybe in rebasing"
+    exit 0
+fi
+
 # check current branch name is $DEST_BRANCH
 if [ $current_branch = "$DEST_BRANCH" ]; then
     DEBUG_ECHO "[BITBUCKET] current branch is $DEST_BRANCH, skip"
