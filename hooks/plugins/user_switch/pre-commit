@@ -35,15 +35,15 @@ DEBUG_ECHO "[UserSwitch] git_user_name: $git_user_name"
 ## 4. check if config is exist, set it
 
 # set git config user.name if not exist or not equal
-_=$(git config --local --get user.name)
-if [ $? -ne 0 ] || [ "$_" != "$git_user_name" ]; then
+exist_user_name=$(git config --local --get user.name)
+if [ "$exist_user_name" != "$git_user_name" ]; then
     echo "[PRE-COMMIT] set git config user.name -> "$git_user_name""
     git config user.name "$git_user_name"
 fi
 
 # set git config user.email if not exist or not equal
-_=$(git config --local --get user.email)
-if [ $? -ne 0 ] || [ "$_" != "$git_user_email" ]; then
+exist_user_email=$(git config --local --get user.email)
+if [ "$exist_user_email" != "$git_user_email" ]; then
     echo "[PRE-COMMIT] set git config user.email -> $git_user_email"
     git config user.email "$git_user_email"
 fi
